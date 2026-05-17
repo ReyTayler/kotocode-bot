@@ -1,0 +1,20 @@
+[Unit]
+Description=Kotocode Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=kotocode
+WorkingDirectory=/home/kotocode/kotocode-bot
+ExecStart=/home/kotocode/kotocode-bot/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Переменные окружения берутся из .env через python-dotenv
+# Дополнительно можно указать явно:
+# EnvironmentFile=/home/kotocode/kotocode-bot/.env
+
+[Install]
+WantedBy=multi-user.target

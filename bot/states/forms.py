@@ -1,0 +1,12 @@
+from telegram.ext import ConversationHandler
+
+# Состояния для добавления допровода
+DOPROVED_WAITING_TEMPLATE = "DOPROVED_WAITING_TEMPLATE"
+DOPROVED_WAITING_CONFIRM = "DOPROVED_WAITING_CONFIRM"
+
+# Состояния для добавления переноса
+PERENOS_WAITING_TEMPLATE = "PERENOS_WAITING_TEMPLATE"
+PERENOS_WAITING_CONFIRM = "PERENOS_WAITING_CONFIRM"
+
+# Состояние для передачи прав супер-админа
+TRANSFER_WAITING_CONFIRM = "TRANSFER_WAITING_CONFIRM"

@@ -1,0 +1,17 @@
+# Секреты
+.env
+
+# База данных
+data/kotocode.db
+
+# Логи
+logs/
+
+# Виртуальное окружение
+venv/
+
+# Python кэш
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
