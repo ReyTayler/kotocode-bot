@@ -164,16 +164,22 @@ def get_users_by_role(role: str) -> list:
 
 
 def get_all_users_by_roles() -> dict:
-    """Возвращает словарь {role: [users]} для всех ненулевых ролей."""
-    roles = [ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER]
+    """Возвращает словарь {role: [users]} для всех ролей."""
     result = {}
     with get_conn() as conn:
-        for role in roles:
+        # Супер-админ определяется по флагу, а не по полю role
+        superadmins = conn.execute(
+            "SELECT * FROM users WHERE is_superadmin = 1 ORDER BY full_name"
+        ).fetchall()
+        result[ROLE_SUPERADMIN] = superadmins
+
+        # Остальные роли — по полю role, исключая тех у кого is_superadmin=1
+        for role in [ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER]:
             rows = conn.execute(
-                "SELECT * FROM users WHERE role = ? ORDER BY full_name", (role,)
+                "SELECT * FROM users WHERE role = ? AND is_superadmin = 0 ORDER BY full_name",
+                (role,)
             ).fetchall()
-            if rows:
-                result[role] = rows
+            result[role] = rows
     return result
 
 
