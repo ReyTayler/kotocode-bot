@@ -128,6 +128,7 @@ async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         db.ROLE_ADMIN:      "Администраторы 🔧",
         db.ROLE_MANAGER:    "Менеджеры 📋",
         db.ROLE_TEACHER:    "Преподаватели 👨‍🏫",
+        db.ROLE_BLOCKED:    "Без роли 👤",
     }
 
     if not users_by_role:
