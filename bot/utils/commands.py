@@ -22,6 +22,7 @@ COMMANDS_MANAGER = [
     BotCommand("add_perenos", "Назначить перенос"),
     BotCommand("cancel", "Отменить событие — /cancel ID"),
     BotCommand("list", "Все активные события"),
+    BotCommand("teachers", "Список преподавателей"),
 ]
 
 COMMANDS_ADMIN = [
@@ -30,7 +31,6 @@ COMMANDS_ADMIN = [
     BotCommand("managers", "Список менеджеров"),
     BotCommand("addteacher", "Зарегистрировать преподавателя"),
     BotCommand("removeteacher", "Снять преподавателя"),
-    BotCommand("teachers", "Список преподавателей"),
     BotCommand("admins", "Список администраторов"),
 ]
 
