@@ -119,20 +119,24 @@ def fmt_event_card(event: sqlite3.Row) -> str:
     )
 
 
-def fmt_event_updated(event: sqlite3.Row, changed_field: str, changed_by: str) -> str:
+def fmt_event_updated(event: sqlite3.Row, changed_fields: list, changed_by: str) -> str:
     """Уведомление об изменении события в общий чат."""
     emoji, label = TYPE_LABELS.get(event["type"], ("📋", event["type"]))
     comment = f"\n💬 {event['comment']}" if event["comment"] else ""
     field_names = {
-        "group_name":   "Группа",
+        "group_name":    "Группа",
         "lesson_number": "Номер урока",
-        "scheduled_at": "Дата проведения",
-        "children":     "Дети",
-        "comment":      "Комментарий",
+        "scheduled_at":  "Дата проведения",
+        "children":      "Дети",
+        "comment":       "Комментарий",
     }
+    if changed_fields:
+        fields_str = ", ".join(field_names.get(f, f) for f in changed_fields)
+    else:
+        fields_str = "данные"
     return (
         f"✏️ <b>{label} #{event['id']} обновлён</b>\n"
-        f"Изменено: <b>{field_names.get(changed_field, changed_field)}</b> "
+        f"Изменено: <b>{fields_str}</b> "
         f"(менеджер @{changed_by})\n\n"
         f"👨‍🏫 @{event['teacher_username']}\n"
         f"📚 {event['group_name']} | {event['lesson_number']}\n"
