@@ -15,6 +15,7 @@ from bot.handlers.manager import (
     cancel_event_by_id,
     list_events,
     my_events,
+    get_edit_conv_handler,
 )
 from bot.handlers.admin import (
     add_manager, remove_manager, list_managers,
@@ -43,6 +44,9 @@ def build_app():
     # ── FSM: добавление событий ────────────────────────────────────────────────
     app.add_handler(get_doproved_conv_handler())
     app.add_handler(get_perenos_conv_handler())
+
+    # ── FSM: редактирование событий ────────────────────────────────────────────
+    app.add_handler(get_edit_conv_handler())
 
     # ── FSM: передача прав ─────────────────────────────────────────────────────
     app.add_handler(get_transfer_conv_handler())
