@@ -63,6 +63,14 @@ def parse_template(text: str) -> ParsedEvent:
 
     # Строка 3 — номер урока
     lesson_number = lines[2]
+    # Убираем префикс "Урок №" и проверяем что осталось число
+    lesson_clean = re.sub(r"^урок\s*[№#]?\s*", "", lesson_number, flags=re.IGNORECASE).strip()
+    if not lesson_clean or not re.search(r"\d", lesson_clean):
+        raise ParseError(
+            f"Номер урока не заполнен или не содержит числа.\n"
+            f"Получено: <code>{lesson_number}</code>\n"
+            f"Пример правильного заполнения: <code>Урок №12</code>"
+        )
 
     # Строка 4 — дата (ищем паттерн дд.мм чч:мм или дд.мм.гггг чч:мм)
     date_line = lines[3]
@@ -97,6 +105,25 @@ def _validate_future(scheduled_at: datetime) -> None:
         raise ParseError(
             f"Дата проведения уже в прошлом: <b>{scheduled_at.strftime('%d.%m.%Y %H:%M')}</b>\n"
             "Укажи будущую дату и время."
+        )
+
+
+def validate_teacher(teacher_username: str) -> None:
+    """
+    Проверяет что преподаватель с таким username есть в БД и имеет роль teacher.
+    Бросает ParseError если не найден.
+    """
+    from bot import database as db
+    user = db.get_user_by_username(teacher_username)
+    if not user:
+        raise ParseError(
+            f"Преподаватель @{teacher_username} не найден в системе.\n"
+            "Попроси его написать боту /start, затем повтори."
+        )
+    if user["role"] not in (db.ROLE_TEACHER, db.ROLE_ADMIN, db.ROLE_SUPERADMIN):
+        raise ParseError(
+            f"Пользователь @{teacher_username} не является преподавателем.\n"
+            "Проверь правильность username."
         )
 
 
