@@ -36,6 +36,7 @@ _SECTION_ADMIN = """
 /managers — список менеджеров
 /addteacher @username — зарегистрировать преподавателя
 /removeteacher @username — снять преподавателя
+/users — все пользователи бота по ролям
 /admins — список администраторов
 """
 
