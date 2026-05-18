@@ -163,6 +163,20 @@ def get_users_by_role(role: str) -> list:
         ).fetchall()
 
 
+def get_all_users_by_roles() -> dict:
+    """Возвращает словарь {role: [users]} для всех ненулевых ролей."""
+    roles = [ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER]
+    result = {}
+    with get_conn() as conn:
+        for role in roles:
+            rows = conn.execute(
+                "SELECT * FROM users WHERE role = ? ORDER BY full_name", (role,)
+            ).fetchall()
+            if rows:
+                result[role] = rows
+    return result
+
+
 def ensure_superadmin(telegram_id: int, username: Optional[str], full_name: str) -> None:
     """Гарантирует что супер-админ из .env есть в БД."""
     with get_conn() as conn:
