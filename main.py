@@ -20,6 +20,7 @@ from bot.handlers.manager import (
 from bot.handlers.admin import (
     add_manager, remove_manager, list_managers,
     add_teacher, remove_teacher, list_teachers,
+    list_all_users,
 )
 from bot.handlers.superadmin import (
     add_admin, remove_admin, list_admins,
@@ -64,6 +65,7 @@ def build_app():
     app.add_handler(CommandHandler("addteacher", add_teacher, filters=private))
     app.add_handler(CommandHandler("removeteacher", remove_teacher, filters=private))
     app.add_handler(CommandHandler("teachers", list_teachers, filters=private))
+    app.add_handler(CommandHandler("users", list_all_users, filters=private))
 
     # ── Команды супер-админа ───────────────────────────────────────────────────
     app.add_handler(CommandHandler("addadmin", add_admin, filters=private))
