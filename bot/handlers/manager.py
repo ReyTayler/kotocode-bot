@@ -455,7 +455,7 @@ async def edit_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     changed_by = update.effective_user.username or str(update.effective_user.id)
 
     # Публикуем изменение в общий чат
-    await query.bot.send_message(
+    await context.bot.send_message(
         chat_id=GENERAL_CHAT_ID,
         text=fmt_event_updated(event, "general", changed_by),
         parse_mode="HTML",
@@ -464,7 +464,7 @@ async def edit_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Уведомляем преподавателя в личку
     if event["teacher_telegram_id"]:
         from bot.utils.notifications import notify_event_updated
-        await notify_event_updated(query.bot, event["teacher_telegram_id"], event, "general")
+        await notify_event_updated(context.bot, event["teacher_telegram_id"], event, "general")
 
     await query.edit_message_text(
         f"✅ Изменения по событию #{event_id} сохранены и отправлены в чат."
