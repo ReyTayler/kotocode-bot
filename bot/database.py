@@ -174,7 +174,7 @@ def get_all_users_by_roles() -> dict:
         result[ROLE_SUPERADMIN] = superadmins
 
         # Остальные роли — по полю role, исключая тех у кого is_superadmin=1
-        for role in [ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER]:
+        for role in [ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER, ROLE_BLOCKED]:
             rows = conn.execute(
                 "SELECT * FROM users WHERE role = ? AND is_superadmin = 0 ORDER BY full_name",
                 (role,)
