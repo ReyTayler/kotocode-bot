@@ -52,6 +52,30 @@ async def notify_event_cancelled(bot: Bot, teacher_telegram_id: int, event) -> N
     await notify_user(bot, teacher_telegram_id, text)
 
 
+async def notify_event_updated(bot: Bot, teacher_telegram_id: int, event, changed_field: str) -> None:
+    """Уведомление преподавателю об изменении допровода/переноса."""
+    from bot.utils.formatters import TYPE_LABELS, fmt_dt
+    emoji, label = TYPE_LABELS.get(event["type"], ("📋", event["type"]))
+    field_names = {
+        "group_name":    "Группа",
+        "lesson_number": "Номер урока",
+        "scheduled_at":  "Дата проведения",
+        "children":      "Дети",
+        "comment":       "Комментарий",
+    }
+    comment = f"\n💬 {event['comment']}" if event["comment"] else ""
+    text = (
+        f"✏️ <b>{label} #{event['id']} изменён</b>\n"
+        f"Изменено: <b>{field_names.get(changed_field, changed_field)}</b>\n\n"
+        f"📚 {event['group_name']} | {event['lesson_number']}\n"
+        f"📅 {fmt_dt(event['scheduled_at'])}\n"
+        f"👦 Дети: {event['children']}"
+        f"{comment}\n"
+        f"🆔 #{event['id']}"
+    )
+    await notify_user(bot, teacher_telegram_id, text)
+
+
 async def notify_reminder_dm(bot: Bot, teacher_telegram_id: int, event, hours: int) -> None:
     """Напоминание преподавателю в личку."""
     text = fmt_event_reminder(event, hours)
