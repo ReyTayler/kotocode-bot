@@ -113,7 +113,7 @@ async def remove_teacher(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await _remove_role(update, context, "Преподаватель", "removeteacher")
 
 
-@require_role(is_admin_or_above)
+@require_role(is_manager_or_above)
 async def list_teachers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     users = db.get_users_by_role(db.ROLE_TEACHER)
     await update.message.reply_text(_fmt_users_list(users, "преподавателей"), parse_mode="HTML")
