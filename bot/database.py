@@ -221,6 +221,22 @@ def get_event(event_id: int) -> Optional[sqlite3.Row]:
         ).fetchone()
 
 
+# Допустимые поля для редактирования
+EDITABLE_FIELDS = {"group_name", "lesson_number", "scheduled_at", "children", "comment"}
+
+
+def update_event_field(event_id: int, field: str, value: str) -> bool:
+    """Обновляет одно поле активного события. Возвращает True если успешно."""
+    if field not in EDITABLE_FIELDS:
+        raise ValueError(f"Поле {field} не доступно для редактирования")
+    with get_conn() as conn:
+        cur = conn.execute(
+            f"UPDATE events SET {field} = ? WHERE id = ? AND status = 'active'",
+            (value, event_id),
+        )
+        return cur.rowcount > 0
+
+
 def cancel_event(event_id: int) -> bool:
     with get_conn() as conn:
         cur = conn.execute(
