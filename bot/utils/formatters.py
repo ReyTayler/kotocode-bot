@@ -99,7 +99,47 @@ def fmt_event_list_item(event: sqlite3.Row, index: int) -> str:
         f"   📅 {fmt_dt(event['scheduled_at'])}\n"
         f"   📚 {event['group_name']} | {event['lesson_number']}\n"
         f"   🆔 #{event['id']}\n"
-        f"   ✖️ Отменить: /cancel_{event['id']}"
+        f"   ✖️ Отменить: /cancel_{event['id']}\n"
+        f"   ✏️ Редактировать: /edit_{event['id']}"
+    )
+
+
+def fmt_event_card(event: sqlite3.Row) -> str:
+    """Карточка события для экрана редактирования."""
+    emoji, label = TYPE_LABELS.get(event["type"], ("📋", event["type"]))
+    comment = f"\n💬 {event['comment']}" if event["comment"] else ""
+    return (
+        f"{emoji} <b>{label} #{event['id']}</b>\n"
+        f"👨‍🏫 @{event['teacher_username']}\n"
+        f"📚 {event['group_name']} | {event['lesson_number']}\n"
+        f"📅 {fmt_dt(event['scheduled_at'])}\n"
+        f"👦 Дети: {event['children']}"
+        f"{comment}\n\n"
+        f"Выбери поле для редактирования или нажми <b>Сохранить</b>:"
+    )
+
+
+def fmt_event_updated(event: sqlite3.Row, changed_field: str, changed_by: str) -> str:
+    """Уведомление об изменении события в общий чат."""
+    emoji, label = TYPE_LABELS.get(event["type"], ("📋", event["type"]))
+    comment = f"\n💬 {event['comment']}" if event["comment"] else ""
+    field_names = {
+        "group_name":   "Группа",
+        "lesson_number": "Номер урока",
+        "scheduled_at": "Дата проведения",
+        "children":     "Дети",
+        "comment":      "Комментарий",
+    }
+    return (
+        f"✏️ <b>{label} #{event['id']} обновлён</b>\n"
+        f"Изменено: <b>{field_names.get(changed_field, changed_field)}</b> "
+        f"(менеджер @{changed_by})\n\n"
+        f"👨‍🏫 @{event['teacher_username']}\n"
+        f"📚 {event['group_name']} | {event['lesson_number']}\n"
+        f"📅 {fmt_dt(event['scheduled_at'])}\n"
+        f"👦 Дети: {event['children']}"
+        f"{comment}\n"
+        f"🆔 #{event['id']}"
     )
 
 
