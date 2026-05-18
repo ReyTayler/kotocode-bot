@@ -1,4 +1,6 @@
 import logging
+import re
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ContextTypes, ConversationHandler,
@@ -6,17 +8,19 @@ from telegram.ext import (
 )
 
 from bot import database as db
-from bot.config import GENERAL_CHAT_ID
+from bot.config import GENERAL_CHAT_ID, TIMEZONE
 from bot.middlewares.role_check import require_role, is_manager_or_above
 from bot.scheduler import schedule_reminders, cancel_reminders
 from bot.states.forms import (
     DOPROVED_WAITING_TEMPLATE, DOPROVED_WAITING_CONFIRM,
     PERENOS_WAITING_TEMPLATE, PERENOS_WAITING_CONFIRM,
+    EDIT_CHOOSING_FIELD, EDIT_WAITING_VALUE,
 )
-from bot.utils.parser import parse_template, ParseError
+from bot.utils.parser import parse_template, ParseError, _parse_date, _validate_future
 from bot.utils.formatters import (
     DOPROVED_TEMPLATE, PERENOS_TEMPLATE,
-    fmt_preview, fmt_event_announce, fmt_event_cancelled, fmt_event_list_item,
+    fmt_preview, fmt_event_announce, fmt_event_cancelled,
+    fmt_event_list_item, fmt_event_card, fmt_event_updated,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,6 +28,8 @@ logger = logging.getLogger(__name__)
 # ─── Ключи для хранения данных в context.user_data ───────────────────────────
 _PARSED_KEY = "pending_event_parsed"
 _TYPE_KEY = "pending_event_type"
+_EDIT_EVENT_ID_KEY = "edit_event_id"
+_EDIT_FIELD_KEY = "edit_field"
 
 
 # ─── Шаблонные сообщения ──────────────────────────────────────────────────────
@@ -302,6 +308,192 @@ async def my_events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines.append("")
 
     await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+
+# ─── Редактирование события ───────────────────────────────────────────────────
+
+# Описание полей: field_key → (эмодзи, название, подсказка для ввода)
+_EDIT_FIELDS = {
+    "group_name":    ("📚", "Группа",           "Отправь новое название группы/индива:"),
+    "lesson_number": ("📖", "Номер урока",       "Отправь новый номер урока (например: Урок №13):"),
+    "scheduled_at":  ("📅", "Дата проведения",   "Отправь новую дату в формате: <code>дд.мм чч:мм</code>"),
+    "children":      ("👦", "Дети",              "Отправь новый список детей:"),
+    "comment":       ("💬", "Комментарий",       "Отправь новый комментарий (или прочерк <code>-</code> чтобы убрать):"),
+}
+
+
+def _edit_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора поля для редактирования."""
+    buttons = [
+        [
+            InlineKeyboardButton(f"{e} {name}", callback_data=f"edit_field:{key}")
+            for key, (e, name, _) in list(_EDIT_FIELDS.items())[i:i+2]
+        ]
+        for i in range(0, len(_EDIT_FIELDS), 2)
+    ]
+    buttons.append([InlineKeyboardButton("✅ Сохранить", callback_data="edit_done")])
+    return InlineKeyboardMarkup(buttons)
+
+
+@require_role(is_manager_or_above)
+async def edit_event_by_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
+    """Точка входа — /edit_42."""
+    match = re.search(r"/edit_(\d+)", update.message.text)
+    if not match:
+        return ConversationHandler.END
+
+    event_id = int(match.group(1))
+    event = db.get_event(event_id)
+
+    if not event:
+        await update.message.reply_text(f"⚠️ Событие #{event_id} не найдено.")
+        return ConversationHandler.END
+
+    if event["status"] != db.STATUS_ACTIVE:
+        await update.message.reply_text(f"⚠️ Событие #{event_id} не активно.")
+        return ConversationHandler.END
+
+    context.user_data[_EDIT_EVENT_ID_KEY] = event_id
+    await update.message.reply_text(
+        fmt_event_card(event),
+        parse_mode="HTML",
+        reply_markup=_edit_keyboard(),
+    )
+    return EDIT_CHOOSING_FIELD
+
+
+async def edit_field_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
+    """Пользователь нажал кнопку поля."""
+    query = update.callback_query
+    await query.answer()
+
+    # Проверка прав
+    if not is_manager_or_above(update.effective_user.id):
+        await query.edit_message_text("⛔ У вас нет прав для этого действия.")
+        return ConversationHandler.END
+
+    field = query.data.split(":")[1]
+    if field not in _EDIT_FIELDS:
+        return EDIT_CHOOSING_FIELD
+
+    context.user_data[_EDIT_FIELD_KEY] = field
+    _, name, prompt = _EDIT_FIELDS[field]
+
+    await query.edit_message_text(
+        f"Редактирование поля <b>{name}</b>\n\n{prompt}\n\n"
+        f"Для отмены — /cancel_input",
+        parse_mode="HTML",
+    )
+    return EDIT_WAITING_VALUE
+
+
+async def edit_receive_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
+    """Получили новое значение поля от пользователя."""
+    field = context.user_data.get(_EDIT_FIELD_KEY)
+    event_id = context.user_data.get(_EDIT_EVENT_ID_KEY)
+
+    if not field or not event_id:
+        await update.message.reply_text("⚠️ Что-то пошло не так. Начни заново.")
+        return ConversationHandler.END
+
+    raw_value = update.message.text.strip()
+    _, name, _ = _EDIT_FIELDS[field]
+
+    # Обрабатываем дату отдельно — нужен парсинг и валидация
+    if field == "scheduled_at":
+        try:
+            dt = _parse_date(raw_value)
+            _validate_future(dt)
+            db_value = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            await update.message.reply_text(
+                f"⚠️ Ошибка: {e}\n\nПопробуй ещё раз или /cancel_input",
+                parse_mode="HTML",
+            )
+            return EDIT_WAITING_VALUE
+    elif field == "comment" and raw_value == "-":
+        db_value = ""
+    else:
+        db_value = raw_value
+
+    # Сохраняем в БД
+    db.update_event_field(event_id, field, db_value)
+
+    # Если изменилась дата — пересчитываем напоминания
+    if field == "scheduled_at":
+        cancel_reminders(event_id)
+        schedule_reminders(event_id, TIMEZONE.localize(
+            datetime.strptime(db_value, "%Y-%m-%d %H:%M:%S")
+        ))
+
+    # Показываем обновлённую карточку
+    event = db.get_event(event_id)
+    await update.message.reply_text(
+        f"✅ Поле <b>{name}</b> обновлено.\n\n" + fmt_event_card(event),
+        parse_mode="HTML",
+        reply_markup=_edit_keyboard(),
+    )
+    return EDIT_CHOOSING_FIELD
+
+
+async def edit_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Пользователь нажал Сохранить."""
+    query = update.callback_query
+    await query.answer()
+
+    # Проверка прав
+    if not is_manager_or_above(update.effective_user.id):
+        await query.edit_message_text("⛔ У вас нет прав для этого действия.")
+        return ConversationHandler.END
+
+    event_id = context.user_data.get(_EDIT_EVENT_ID_KEY)
+    if not event_id:
+        await query.edit_message_text("⚠️ Что-то пошло не так.")
+        return ConversationHandler.END
+
+    event = db.get_event(event_id)
+    changed_by = update.effective_user.username or str(update.effective_user.id)
+
+    # Публикуем изменение в общий чат
+    await query.bot.send_message(
+        chat_id=GENERAL_CHAT_ID,
+        text=fmt_event_updated(event, "general", changed_by),
+        parse_mode="HTML",
+    )
+
+    # Уведомляем преподавателя в личку
+    if event["teacher_telegram_id"]:
+        from bot.utils.notifications import notify_event_updated
+        await notify_event_updated(query.bot, event["teacher_telegram_id"], event, "general")
+
+    await query.edit_message_text(
+        f"✅ Изменения по событию #{event_id} сохранены и отправлены в чат."
+    )
+
+    context.user_data.pop(_EDIT_EVENT_ID_KEY, None)
+    context.user_data.pop(_EDIT_FIELD_KEY, None)
+    return ConversationHandler.END
+
+
+def get_edit_conv_handler() -> ConversationHandler:
+    return ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex(r"^/edit_\d+$") & filters.ChatType.PRIVATE, edit_event_by_id)
+        ],
+        states={
+            EDIT_CHOOSING_FIELD: [
+                CallbackQueryHandler(edit_field_callback, pattern=r"^edit_field:"),
+                CallbackQueryHandler(edit_done_callback, pattern="^edit_done$"),
+            ],
+            EDIT_WAITING_VALUE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, edit_receive_value),
+            ],
+        },
+        fallbacks=[CommandHandler("cancel_input", cancel_input, filters=filters.ChatType.PRIVATE)],
+        per_user=True,
+        per_chat=True,
+        per_message=False,
+    )
 
 
 # ─── ConversationHandler-ы ────────────────────────────────────────────────────
