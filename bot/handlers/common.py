@@ -26,6 +26,7 @@ _SECTION_MANAGER = """
 /cancel ID — отменить событие по номеру
 /list — все активные события
 /list @username — события конкретного преподавателя
+/teachers — список преподавателей
 """
 
 _SECTION_ADMIN = """
@@ -35,7 +36,6 @@ _SECTION_ADMIN = """
 /managers — список менеджеров
 /addteacher @username — зарегистрировать преподавателя
 /removeteacher @username — снять преподавателя
-/teachers — список преподавателей
 /admins — список администраторов
 """
 
@@ -74,7 +74,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     db.upsert_user(user.id, user.username, user.full_name)
     role = _get_effective_role(user.id)
-
     role_names = {
         db.ROLE_SUPERADMIN: "Супер-админ 👑",
         db.ROLE_ADMIN: "Администратор 🔧",
@@ -82,7 +81,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         db.ROLE_TEACHER: "Преподаватель 👨‍🏫",
         db.ROLE_BLOCKED: "Нет доступа ⛔",
     }
-
     greeting = (
         f"Привет, {user.first_name}!\n"
         f"Я - Бот школы <b>Котокод</b>\n"
