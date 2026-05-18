@@ -30,6 +30,7 @@ _PARSED_KEY = "pending_event_parsed"
 _TYPE_KEY = "pending_event_type"
 _EDIT_EVENT_ID_KEY = "edit_event_id"
 _EDIT_FIELD_KEY = "edit_field"
+_EDIT_CHANGED_FIELDS_KEY = "edit_changed_fields"  # список изменённых полей за сессию
 
 
 # ─── Шаблонные сообщения ──────────────────────────────────────────────────────
@@ -354,6 +355,7 @@ async def edit_event_by_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return ConversationHandler.END
 
     context.user_data[_EDIT_EVENT_ID_KEY] = event_id
+    context.user_data[_EDIT_CHANGED_FIELDS_KEY] = []
     await update.message.reply_text(
         fmt_event_card(event),
         parse_mode="HTML",
@@ -419,6 +421,11 @@ async def edit_receive_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Сохраняем в БД
     db.update_event_field(event_id, field, db_value)
 
+    # Фиксируем изменённое поле в сессии
+    changed = context.user_data.setdefault(_EDIT_CHANGED_FIELDS_KEY, [])
+    if field not in changed:
+        changed.append(field)
+
     # Если изменилась дата — пересчитываем напоминания
     if field == "scheduled_at":
         cancel_reminders(event_id)
@@ -453,18 +460,19 @@ async def edit_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     event = db.get_event(event_id)
     changed_by = update.effective_user.username or str(update.effective_user.id)
+    changed_fields = context.user_data.get(_EDIT_CHANGED_FIELDS_KEY, [])
 
     # Публикуем изменение в общий чат
     await context.bot.send_message(
         chat_id=GENERAL_CHAT_ID,
-        text=fmt_event_updated(event, "general", changed_by),
+        text=fmt_event_updated(event, changed_fields, changed_by),
         parse_mode="HTML",
     )
 
     # Уведомляем преподавателя в личку
     if event["teacher_telegram_id"]:
         from bot.utils.notifications import notify_event_updated
-        await notify_event_updated(context.bot, event["teacher_telegram_id"], event, "general")
+        await notify_event_updated(context.bot, event["teacher_telegram_id"], event, changed_fields)
 
     await query.edit_message_text(
         f"✅ Изменения по событию #{event_id} сохранены и отправлены в чат."
@@ -472,6 +480,7 @@ async def edit_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     context.user_data.pop(_EDIT_EVENT_ID_KEY, None)
     context.user_data.pop(_EDIT_FIELD_KEY, None)
+    context.user_data.pop(_EDIT_CHANGED_FIELDS_KEY, None)
     return ConversationHandler.END
 
 
