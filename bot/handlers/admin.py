@@ -117,3 +117,32 @@ async def remove_teacher(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def list_teachers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     users = db.get_users_by_role(db.ROLE_TEACHER)
     await update.message.reply_text(_fmt_users_list(users, "преподавателей"), parse_mode="HTML")
+
+
+@require_role(is_admin_or_above)
+async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    users_by_role = db.get_all_users_by_roles()
+
+    role_labels = {
+        db.ROLE_SUPERADMIN: "Супер-админы 👑",
+        db.ROLE_ADMIN:      "Администраторы 🔧",
+        db.ROLE_MANAGER:    "Менеджеры 📋",
+        db.ROLE_TEACHER:    "Преподаватели 👨‍🏫",
+    }
+
+    if not users_by_role:
+        await update.message.reply_text("В боте нет зарегистрированных пользователей.")
+        return
+
+    lines = ["<b>Список всех пользователей:</b>"]
+    for role, label in role_labels.items():
+        users = users_by_role.get(role)
+        lines.append(f"\n<b>{label}</b>")
+        if not users:
+            lines.append("Нет пользователей в этой роли")
+        else:
+            for u in users:
+                username = f" (@{u['username']})" if u["username"] else ""
+                lines.append(f"{u['full_name']}{username}")
+
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
