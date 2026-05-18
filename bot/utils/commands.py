@@ -31,6 +31,7 @@ COMMANDS_ADMIN = [
     BotCommand("managers", "Список менеджеров"),
     BotCommand("addteacher", "Зарегистрировать преподавателя"),
     BotCommand("removeteacher", "Снять преподавателя"),
+    BotCommand("users", "Все пользователи бота по ролям"),
     BotCommand("admins", "Список администраторов"),
 ]
 
