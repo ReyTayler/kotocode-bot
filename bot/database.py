@@ -230,10 +230,18 @@ def update_event_field(event_id: int, field: str, value: str) -> bool:
     if field not in EDITABLE_FIELDS:
         raise ValueError(f"Поле {field} не доступно для редактирования")
     with get_conn() as conn:
-        cur = conn.execute(
-            f"UPDATE events SET {field} = ? WHERE id = ? AND status = 'active'",
-            (value, event_id),
-        )
+        if field == "scheduled_at":
+            # Сбрасываем флаги напоминаний — дата изменилась, нужно напомнить заново
+            cur = conn.execute(
+                "UPDATE events SET scheduled_at = ?, reminded_24h = 0, reminded_1h = 0 "
+                "WHERE id = ? AND status = 'active'",
+                (value, event_id),
+            )
+        else:
+            cur = conn.execute(
+                f"UPDATE events SET {field} = ? WHERE id = ? AND status = 'active'",
+                (value, event_id),
+            )
         return cur.rowcount > 0
 
 
