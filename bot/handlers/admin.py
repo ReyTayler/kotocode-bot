@@ -42,14 +42,12 @@ async def _add_role(
         )
         return
 
-    db.set_role(user["telegram_id"], role, added_by=update.effective_user.id)
+    db.grant_role(user["telegram_id"], role, added_by=update.effective_user.id)
     await update.message.reply_text(
         f"✅ @{username} назначен как <b>{role_label}</b>.",
         parse_mode="HTML",
     )
-    # Обновляем меню команд у пользователя
     await set_commands_for_user(context.bot, user["telegram_id"])
-    # Уведомляем пользователя о выдаче роли
     from bot.utils.notifications import notify_role_granted
     await notify_role_granted(context.bot, user["telegram_id"], role)
 
@@ -57,6 +55,7 @@ async def _add_role(
 async def _remove_role(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
+    role: str,
     role_label: str,
     command: str,
 ) -> None:
@@ -74,11 +73,9 @@ async def _remove_role(
         await update.message.reply_text(f"⚠️ Пользователь @{username} не найден.")
         return
 
-    db.set_role(user["telegram_id"], db.ROLE_BLOCKED, added_by=update.effective_user.id)
+    db.revoke_role(user["telegram_id"], role, added_by=update.effective_user.id)
     await update.message.reply_text(f"✅ У @{username} сняты права <b>{role_label}</b>.", parse_mode="HTML")
-    # Обновляем меню команд у пользователя
     await set_commands_for_user(context.bot, user["telegram_id"])
-    # Уведомляем пользователя о снятии роли
     from bot.utils.notifications import notify_role_revoked
     await notify_role_revoked(context.bot, user["telegram_id"], role_label)
 
@@ -92,7 +89,7 @@ async def add_manager(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 @require_role(is_admin_or_above)
 async def remove_manager(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await _remove_role(update, context, "Менеджер", "removemanager")
+    await _remove_role(update, context, db.ROLE_MANAGER, "Менеджер", "removemanager")
 
 
 @require_role(is_admin_or_above)
@@ -110,7 +107,7 @@ async def add_teacher(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 @require_role(is_admin_or_above)
 async def remove_teacher(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await _remove_role(update, context, "Преподаватель", "removeteacher")
+    await _remove_role(update, context, db.ROLE_TEACHER, "Преподаватель", "removeteacher")
 
 
 @require_role(is_manager_or_above)
