@@ -46,7 +46,7 @@ async def add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    db.set_role(user["telegram_id"], db.ROLE_ADMIN, added_by=update.effective_user.id)
+    db.grant_role(user["telegram_id"], db.ROLE_ADMIN, added_by=update.effective_user.id)
     await update.message.reply_text(
         f"✅ @{username} назначен <b>Администратором</b>.",
         parse_mode="HTML",
@@ -77,7 +77,7 @@ async def remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text("⛔ Нельзя снять права у супер-админа.")
         return
 
-    db.set_role(user["telegram_id"], db.ROLE_BLOCKED, added_by=update.effective_user.id)
+    db.revoke_role(user["telegram_id"], db.ROLE_ADMIN, added_by=update.effective_user.id)
     await update.message.reply_text(f"✅ У @{username} сняты права администратора.")
     await set_commands_for_user(context.bot, user["telegram_id"])
     from bot.utils.notifications import notify_role_revoked
