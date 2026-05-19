@@ -247,24 +247,6 @@ def ensure_superadmin(telegram_id: int, username: Optional[str], full_name: str)
             )
 
 
-# ─── Обратная совместимость — set_role через флаги ────────────────────────────
-
-def set_role(telegram_id: int, role: str, added_by: int) -> bool:
-    """
-    Совместимость со старым кодом.
-    ROLE_BLOCKED снимает все роли кроме superadmin.
-    Остальные роли — выдают конкретную роль.
-    """
-    if role == ROLE_BLOCKED:
-        with get_conn() as conn:
-            cur = conn.execute(
-                "UPDATE users SET is_admin=0, is_manager=0, is_teacher=0, added_by=? WHERE telegram_id=?",
-                (added_by, telegram_id),
-            )
-            return cur.rowcount > 0
-    return grant_role(telegram_id, role, added_by)
-
-
 # ─── События ──────────────────────────────────────────────────────────────────
 
 def add_event(
