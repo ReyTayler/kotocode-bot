@@ -120,7 +120,7 @@ def validate_teacher(teacher_username: str) -> None:
             f"Преподаватель @{teacher_username} не найден в системе.\n"
             "Попроси его написать боту /start, затем повтори."
         )
-    if user["role"] not in (db.ROLE_TEACHER, db.ROLE_ADMIN, db.ROLE_SUPERADMIN):
+    if not (user["is_teacher"] or user["is_admin"] or user["is_superadmin"]):
         raise ParseError(
             f"Пользователь @{teacher_username} не является преподавателем.\n"
             "Проверь правильность username."
