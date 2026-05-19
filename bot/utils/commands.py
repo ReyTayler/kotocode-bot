@@ -42,21 +42,47 @@ COMMANDS_SUPERADMIN = [
 ]
 
 
+def _get_commands_for_user(telegram_id: int) -> list[BotCommand]:
+    """Возвращает команды с учётом всех активных ролей пользователя."""
+    from bot.config import SUPERADMIN_ID
+    if telegram_id == SUPERADMIN_ID:
+        return COMMANDS_COMMON + COMMANDS_MANAGER + COMMANDS_ADMIN + COMMANDS_SUPERADMIN
+
+    user = db.get_user(telegram_id)
+    if not user:
+        return COMMANDS_COMMON
+
+    commands = list(COMMANDS_COMMON)
+    seen = set(c.command for c in commands)
+
+    def add_unique(cmds):
+        for c in cmds:
+            if c.command not in seen:
+                commands.append(c)
+                seen.add(c.command)
+
+    if user["is_superadmin"]:
+        add_unique(COMMANDS_MANAGER)
+        add_unique(COMMANDS_ADMIN)
+        add_unique(COMMANDS_SUPERADMIN)
+    elif user["is_admin"]:
+        add_unique(COMMANDS_MANAGER)
+        add_unique(COMMANDS_ADMIN)
+    elif user["is_manager"]:
+        add_unique(COMMANDS_MANAGER)
+
+    if user["is_teacher"] and not (user["is_superadmin"] or user["is_admin"] or user["is_manager"]):
+        add_unique(COMMANDS_TEACHER)
+
+    return commands
+
+
+# Оставляем для обратной совместимости
 def _get_commands_for_role(role: str) -> list[BotCommand]:
-    """Возвращает полный список команд для роли (включая команды ролей ниже)."""
     if role == db.ROLE_SUPERADMIN:
-        return (
-            COMMANDS_COMMON
-            + COMMANDS_MANAGER
-            + COMMANDS_ADMIN
-            + COMMANDS_SUPERADMIN
-        )
+        return COMMANDS_COMMON + COMMANDS_MANAGER + COMMANDS_ADMIN + COMMANDS_SUPERADMIN
     elif role == db.ROLE_ADMIN:
-        return (
-            COMMANDS_COMMON
-            + COMMANDS_MANAGER
-            + COMMANDS_ADMIN
-        )
+        return COMMANDS_COMMON + COMMANDS_MANAGER + COMMANDS_ADMIN
     elif role == db.ROLE_MANAGER:
         return COMMANDS_COMMON + COMMANDS_MANAGER
     elif role == db.ROLE_TEACHER:
@@ -67,14 +93,13 @@ def _get_commands_for_role(role: str) -> list[BotCommand]:
 
 async def set_commands_for_user(bot: Bot, telegram_id: int) -> None:
     """Устанавливает список команд для конкретного пользователя."""
-    role = _get_effective_role(telegram_id)
-    commands = _get_commands_for_role(role)
+    commands = _get_commands_for_user(telegram_id)
     try:
         await bot.set_my_commands(
             commands=commands,
             scope=BotCommandScopeChat(chat_id=telegram_id),
         )
-        logger.info("Команды установлены для user_id=%s role=%s", telegram_id, role)
+        logger.info("Команды установлены для user_id=%s", telegram_id)
     except Exception as e:
         logger.warning("Не удалось установить команды для user_id=%s: %s", telegram_id, e)
 
