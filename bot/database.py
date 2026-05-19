@@ -202,20 +202,21 @@ def get_users_by_role(role: str) -> list:
 
 
 def get_all_users_by_roles() -> dict:
-    """Возвращает словарь {role: [users]} для всех ролей включая без роли."""
+    """Возвращает словарь {role: [users]} для всех ролей.
+    Пользователь с несколькими ролями появляется в каждой секции."""
     with get_conn() as conn:
         result = {
             ROLE_SUPERADMIN: conn.execute(
                 "SELECT * FROM users WHERE is_superadmin = 1 ORDER BY full_name"
             ).fetchall(),
             ROLE_ADMIN: conn.execute(
-                "SELECT * FROM users WHERE is_admin = 1 AND is_superadmin = 0 ORDER BY full_name"
+                "SELECT * FROM users WHERE is_admin = 1 ORDER BY full_name"
             ).fetchall(),
             ROLE_MANAGER: conn.execute(
-                "SELECT * FROM users WHERE is_manager = 1 AND is_superadmin = 0 AND is_admin = 0 ORDER BY full_name"
+                "SELECT * FROM users WHERE is_manager = 1 ORDER BY full_name"
             ).fetchall(),
             ROLE_TEACHER: conn.execute(
-                "SELECT * FROM users WHERE is_teacher = 1 AND is_superadmin = 0 AND is_admin = 0 AND is_manager = 0 ORDER BY full_name"
+                "SELECT * FROM users WHERE is_teacher = 1 ORDER BY full_name"
             ).fetchall(),
             ROLE_BLOCKED: conn.execute(
                 """SELECT * FROM users
