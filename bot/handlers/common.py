@@ -74,22 +74,33 @@ HELP_BY_ROLE = {
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     db.upsert_user(user.id, user.username, user.full_name)
+
+    # Если это супер-админ из .env — гарантируем корректную запись в БД
+    from bot.config import SUPERADMIN_ID
+    if user.id == SUPERADMIN_ID:
+        db.ensure_superadmin(user.id, user.username, user.full_name)
+
     role = _get_effective_role(user.id)
-    role_names = {
-        db.ROLE_SUPERADMIN: "Супер-админ 👑",
-        db.ROLE_ADMIN: "Администратор 🔧",
-        db.ROLE_MANAGER: "Менеджер 📋",
-        db.ROLE_TEACHER: "Преподаватель 👨‍🏫",
-        db.ROLE_BLOCKED: "Нет доступа ⛔",
-    }
+
+    # Собираем список всех активных ролей пользователя
+    db_user = db.get_user(user.id)
+    roles_active = []
+    if db_user:
+        if db_user["is_superadmin"]: roles_active.append("Супер-админ 👑")
+        if db_user["is_admin"]:      roles_active.append("Администратор 🔧")
+        if db_user["is_manager"]:    roles_active.append("Менеджер 📋")
+        if db_user["is_teacher"]:    roles_active.append("Преподаватель 👨‍🏫")
+    if not roles_active:
+        roles_active = ["Нет доступа ⛔"]
+
+    roles_str = ", ".join(roles_active)
     greeting = (
         f"Привет, {user.first_name}!\n"
         f"Я - Бот школы <b>Котокод</b>\n"
-        f"Ваша роль: <b>{role_names.get(role, role)}</b>\n\n"
+        f"Ваши роли: <b>{roles_str}</b>\n\n"
         f"Используй /help для списка команд."
     )
     await update.message.reply_text(greeting, parse_mode="HTML")
-    # Обновляем меню команд для этого пользователя
     await set_commands_for_user(context.bot, user.id)
 
 
@@ -97,7 +108,24 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     db.upsert_user(user.id, user.username, user.full_name)
     role = _get_effective_role(user.id)
-    text = HELP_BY_ROLE.get(role, HELP_BY_ROLE[db.ROLE_BLOCKED])
+
+    # Для пользователей с несколькими ролями — показываем все доступные секции
+    db_user = db.get_user(user.id)
+    if db_user:
+        sections = [_SECTION_COMMON]
+        # Добавляем секции по всем активным ролям
+        if db_user["is_teacher"] and not (db_user["is_admin"] or db_user["is_manager"] or db_user["is_superadmin"]):
+            sections.append(_SECTION_TEACHER)
+        if db_user["is_manager"] or db_user["is_admin"] or db_user["is_superadmin"]:
+            sections.append(_SECTION_MANAGER)
+        if db_user["is_admin"] or db_user["is_superadmin"]:
+            sections.append(_SECTION_ADMIN)
+        if db_user["is_superadmin"]:
+            sections.append(_SECTION_SUPERADMIN)
+        text = "".join(sections)
+    else:
+        text = HELP_BY_ROLE.get(role, HELP_BY_ROLE[db.ROLE_BLOCKED])
+
     await update.message.reply_text(text.strip(), parse_mode="HTML")
 
 
