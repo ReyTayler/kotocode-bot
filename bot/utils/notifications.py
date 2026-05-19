@@ -88,11 +88,10 @@ async def notify_reminder_dm(bot: Bot, teacher_telegram_id: int, event, hours: i
 
 async def notify_role_granted(bot: Bot, telegram_id: int, role: str) -> None:
     """Уведомление пользователю о выдаче роли."""
-    from bot.database import ROLE_ADMIN, ROLE_MANAGER, ROLE_TEACHER
     messages = {
-        ROLE_ADMIN:   "🔧 Тебе выданы права <b>Администратора</b> бота Котокод.\nНапиши /help для списка команд.",
-        ROLE_MANAGER: "📋 Тебе выданы права <b>Менеджера</b> бота Котокод.\nНапиши /help для списка команд.",
-        ROLE_TEACHER: "👨‍🏫 Ты добавлен как <b>Преподаватель</b> в бота Котокод.\nНапиши /help для списка команд.",
+        "admin":   "🔧 Тебе выданы права <b>Администратора</b> бота Котокод.\nНапиши /help для списка команд.",
+        "manager": "📋 Тебе выданы права <b>Менеджера</b> бота Котокод.\nНапиши /help для списка команд.",
+        "teacher": "👨‍🏫 Ты добавлен как <b>Преподаватель</b> в бота Котокод.\nНапиши /help для списка команд.",
     }
     text = messages.get(role)
     if text:
