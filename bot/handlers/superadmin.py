@@ -72,11 +72,6 @@ async def remove_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text(f"⚠️ Пользователь @{username} не найден.")
         return
 
-    # Нельзя снять права у супер-админа
-    if user["is_superadmin"]:
-        await update.message.reply_text("⛔ Нельзя снять права у супер-админа.")
-        return
-
     db.revoke_role(user["telegram_id"], db.ROLE_ADMIN, added_by=update.effective_user.id)
     await update.message.reply_text(f"✅ У @{username} сняты права администратора.")
     await set_commands_for_user(context.bot, user["telegram_id"])
