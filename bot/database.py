@@ -186,7 +186,7 @@ def transfer_superadmin(from_id: int, to_telegram_id: int) -> None:
     with get_conn() as conn:
         conn.execute("UPDATE users SET is_superadmin = 0 WHERE telegram_id = ?", (from_id,))
         conn.execute(
-            "UPDATE users SET is_superadmin = 1, is_admin = 1 WHERE telegram_id = ?",
+            "UPDATE users SET is_superadmin = 1 WHERE telegram_id = ?",
             (to_telegram_id,),
         )
 
@@ -229,7 +229,8 @@ def get_all_users_by_roles() -> dict:
 
 
 def ensure_superadmin(telegram_id: int, username: Optional[str], full_name: str) -> None:
-    """Гарантирует что супер-админ из .env корректно записан в БД."""
+    """Гарантирует что супер-админ из .env корректно записан в БД.
+    Устанавливает только is_superadmin — не трогает другие роли."""
     with get_conn() as conn:
         existing = conn.execute(
             "SELECT * FROM users WHERE telegram_id = ?", (telegram_id,)
@@ -237,13 +238,13 @@ def ensure_superadmin(telegram_id: int, username: Optional[str], full_name: str)
         now = _now_str()
         if existing:
             conn.execute(
-                "UPDATE users SET is_superadmin = 1, is_admin = 1, username = ?, full_name = ? WHERE telegram_id = ?",
+                "UPDATE users SET is_superadmin = 1, username = ?, full_name = ? WHERE telegram_id = ?",
                 (username, full_name, telegram_id),
             )
         else:
             conn.execute(
-                """INSERT INTO users (telegram_id, username, full_name, is_superadmin, is_admin, created_at)
-                   VALUES (?, ?, ?, 1, 1, ?)""",
+                """INSERT INTO users (telegram_id, username, full_name, is_superadmin, created_at)
+                   VALUES (?, ?, ?, 1, ?)""",
                 (telegram_id, username, full_name, now),
             )
 
