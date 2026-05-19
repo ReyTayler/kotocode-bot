@@ -11,46 +11,59 @@ from bot.config import SUPERADMIN_ID
 logger = logging.getLogger(__name__)
 
 
+def _get_user_with_fallback(telegram_id: int):
+    """
+    Возвращает строку пользователя из БД.
+    Для супер-админа из .env гарантирует наличие записи.
+    """
+    return db.get_user(telegram_id)
+
+
 def _get_effective_role(telegram_id: int) -> str:
     """
-    Определяет роль пользователя.
-    Приоритет: is_superadmin в БД > SUPERADMIN_ID в .env > роль из БД > blocked
+    Возвращает наивысшую роль пользователя.
+    Приоритет: is_superadmin в БД > SUPERADMIN_ID в .env > флаги > blocked
     """
-    # Проверяем супер-админа из БД (после передачи прав)
-    sa = db.get_superadmin()
-    if sa and sa["telegram_id"] == telegram_id:
-        return db.ROLE_SUPERADMIN
-
-    # Проверяем супер-админа из .env (первый запуск / аварийный доступ)
+    # Аварийный доступ через .env
     if telegram_id == SUPERADMIN_ID:
         return db.ROLE_SUPERADMIN
 
-    # Берём роль из БД
     user = db.get_user(telegram_id)
-    if user:
-        return user["role"]
+    if not user:
+        return db.ROLE_BLOCKED
 
-    return db.ROLE_BLOCKED
+    return db.get_primary_role(user)
 
 
 def is_superadmin(telegram_id: int) -> bool:
-    return _get_effective_role(telegram_id) == db.ROLE_SUPERADMIN
+    if telegram_id == SUPERADMIN_ID:
+        return True
+    user = db.get_user(telegram_id)
+    return bool(user and user["is_superadmin"])
 
 
 def is_admin_or_above(telegram_id: int) -> bool:
-    return _get_effective_role(telegram_id) in (db.ROLE_SUPERADMIN, db.ROLE_ADMIN)
+    if telegram_id == SUPERADMIN_ID:
+        return True
+    user = db.get_user(telegram_id)
+    return bool(user and (user["is_superadmin"] or user["is_admin"]))
 
 
 def is_manager_or_above(telegram_id: int) -> bool:
-    return _get_effective_role(telegram_id) in (
-        db.ROLE_SUPERADMIN, db.ROLE_ADMIN, db.ROLE_MANAGER
-    )
+    if telegram_id == SUPERADMIN_ID:
+        return True
+    user = db.get_user(telegram_id)
+    return bool(user and (user["is_superadmin"] or user["is_admin"] or user["is_manager"]))
 
 
 def is_teacher_or_above(telegram_id: int) -> bool:
-    return _get_effective_role(telegram_id) in (
-        db.ROLE_SUPERADMIN, db.ROLE_ADMIN, db.ROLE_MANAGER, db.ROLE_TEACHER
-    )
+    if telegram_id == SUPERADMIN_ID:
+        return True
+    user = db.get_user(telegram_id)
+    return bool(user and (
+        user["is_superadmin"] or user["is_admin"] or
+        user["is_manager"]    or user["is_teacher"]
+    ))
 
 
 def require_role(check_fn: Callable[[int], bool], deny_msg: str = None):
@@ -67,7 +80,6 @@ def require_role(check_fn: Callable[[int], bool], deny_msg: str = None):
             if not user:
                 return
 
-            # Обновляем данные пользователя при каждом взаимодействии
             db.upsert_user(user.id, user.username, user.full_name)
 
             if not check_fn(user.id):
