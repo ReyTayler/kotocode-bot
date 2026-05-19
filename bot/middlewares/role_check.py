@@ -1,3 +1,7 @@
+"""
+Декораторы проверки прав доступа для хендлеров.
+Вся логика ролей — в RoleService. Здесь только обёртка для PTB.
+"""
 import logging
 from functools import wraps
 from typing import Callable
@@ -6,69 +10,48 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from bot import database as db
-from bot.config import SUPERADMIN_ID
+from bot.services.role_service import get_role_service, Permission
 
 logger = logging.getLogger(__name__)
 
 
-def _get_user_with_fallback(telegram_id: int):
-    """
-    Возвращает строку пользователя из БД.
-    Для супер-админа из .env гарантирует наличие записи.
-    """
-    return db.get_user(telegram_id)
+# ─── Публичные функции проверки (используются в хендлерах напрямую) ───────────
 
+def is_superadmin(telegram_id: int) -> bool:
+    return get_role_service().is_superadmin(telegram_id)
+
+def is_admin_or_above(telegram_id: int) -> bool:
+    return get_role_service().is_admin(telegram_id)
+
+def is_manager_or_above(telegram_id: int) -> bool:
+    return get_role_service().is_manager(telegram_id)
+
+def is_teacher_or_above(telegram_id: int) -> bool:
+    return get_role_service().has_any_role(telegram_id)
+
+def can_manage_events(telegram_id: int) -> bool:
+    return get_role_service().has_permission(telegram_id, Permission.MANAGE_EVENTS)
+
+
+# ─── Для обратной совместимости с common.py ───────────────────────────────────
 
 def _get_effective_role(telegram_id: int) -> str:
-    """
-    Возвращает наивысшую роль пользователя.
-    Приоритет: is_superadmin в БД > SUPERADMIN_ID в .env > флаги > blocked
-    """
-    # Аварийный доступ через .env
+    """Возвращает наивысшую роль. Используется только для /start приветствия."""
+    from bot.config import SUPERADMIN_ID
     if telegram_id == SUPERADMIN_ID:
         return db.ROLE_SUPERADMIN
-
     user = db.get_user(telegram_id)
     if not user:
         return db.ROLE_BLOCKED
-
     return db.get_primary_role(user)
 
 
-def is_superadmin(telegram_id: int) -> bool:
-    if telegram_id == SUPERADMIN_ID:
-        return True
-    user = db.get_user(telegram_id)
-    return bool(user and user["is_superadmin"])
-
-
-def is_admin_or_above(telegram_id: int) -> bool:
-    if telegram_id == SUPERADMIN_ID:
-        return True
-    user = db.get_user(telegram_id)
-    return bool(user and (user["is_superadmin"] or user["is_admin"]))
-
-
-def is_manager_or_above(telegram_id: int) -> bool:
-    if telegram_id == SUPERADMIN_ID:
-        return True
-    user = db.get_user(telegram_id)
-    return bool(user and (user["is_superadmin"] or user["is_admin"] or user["is_manager"]))
-
-
-def is_teacher_or_above(telegram_id: int) -> bool:
-    if telegram_id == SUPERADMIN_ID:
-        return True
-    user = db.get_user(telegram_id)
-    return bool(user and (
-        user["is_superadmin"] or user["is_admin"] or
-        user["is_manager"]    or user["is_teacher"]
-    ))
-
+# ─── Декоратор ────────────────────────────────────────────────────────────────
 
 def require_role(check_fn: Callable[[int], bool], deny_msg: str = None):
     """
-    Декоратор для хендлеров.
+    Декоратор для хендлеров. Проверяет права перед вызовом.
+
     Пример:
         @require_role(is_manager_or_above)
         async def my_handler(update, context): ...
