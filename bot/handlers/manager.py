@@ -285,10 +285,9 @@ async def my_events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     db.upsert_user(user.id, user.username, user.full_name)
 
-    from bot.middlewares.role_check import _get_effective_role
-    from bot import database as db_module
-    role = _get_effective_role(user.id)
-    if role != db_module.ROLE_TEACHER:
+    # Проверяем флаг is_teacher напрямую — у пользователя может быть несколько ролей
+    db_user = db.get_user(user.id)
+    if not db_user or not db_user["is_teacher"]:
         await update.message.reply_text("⛔ Эта команда только для преподавателей.")
         return
 
