@@ -232,7 +232,8 @@ async def _cancel_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 def get_edit_conv_handler() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex(r"^/edit_\d+$") & filters.ChatType.PRIVATE, edit_event_by_id)
+            MessageHandler(filters.Regex(r"^/edit_\d+(@\w+)?$") & filters.ChatType.PRIVATE, edit_event_by_id),
+            CommandHandler(re.compile(r"^edit_\d+$"), edit_event_by_id, filters=filters.ChatType.PRIVATE),
         ],
         states={
             EDIT_CHOOSING_FIELD: [
