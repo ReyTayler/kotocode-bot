@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 import traceback
 
 from telegram import Update
@@ -81,7 +80,6 @@ def build_app():
     # ── События ────────────────────────────────────────────────────────────────
     app.add_handler(CommandHandler("cancel", cancel_event, filters=private))
     app.add_handler(MessageHandler(filters.Regex(r"^/cancel_\d+(@\w+)?$") & private, cancel_event_by_id))
-    app.add_handler(CommandHandler(re.compile(r"^cancel_\d+$"), cancel_event_by_id, filters=private))
     app.add_handler(CommandHandler("list", list_events, filters=private))
     app.add_handler(CommandHandler("my",   my_events,   filters=private))
 
