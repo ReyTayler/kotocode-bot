@@ -61,7 +61,7 @@ async def my_events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     lines = ["📋 <b>Твои назначения:</b>", ""]
     for i, event in enumerate(events, 1):
-        lines.append(fmt_event_list_item(event, i))
+        lines.append(fmt_event_list_item(event, i, show_actions=False))
         lines.append("")
 
     await update.message.reply_text("\n".join(lines), parse_mode="HTML")
