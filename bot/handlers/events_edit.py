@@ -122,8 +122,42 @@ async def edit_receive_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 parse_mode="HTML",
             )
             return EDIT_WAITING_VALUE
+
+    elif field == "lesson_number":
+        import re as _re
+        clean = _re.sub(r"^урок\s*[№#]?\s*", "", raw, flags=_re.IGNORECASE).strip()
+        if not clean or not _re.search(r"\d", clean):
+            await update.message.reply_text(
+                f"⚠️ Номер урока должен содержать число.\n"
+                f"Получено: <code>{raw}</code>\n"
+                f"Пример: <code>Урок №13</code>\n\n"
+                f"Попробуй ещё раз или /cancel_input",
+                parse_mode="HTML",
+            )
+            return EDIT_WAITING_VALUE
+        db_value = raw
+
+    elif field == "group_name":
+        if not raw or raw == "-":
+            await update.message.reply_text(
+                "⚠️ Название группы не может быть пустым.\n\n"
+                "Попробуй ещё раз или /cancel_input",
+            )
+            return EDIT_WAITING_VALUE
+        db_value = raw
+
+    elif field == "children":
+        if not raw or raw == "-":
+            await update.message.reply_text(
+                "⚠️ Список детей не может быть пустым.\n\n"
+                "Попробуй ещё раз или /cancel_input",
+            )
+            return EDIT_WAITING_VALUE
+        db_value = raw
+
     elif field == "comment" and raw == "-":
         db_value = ""
+
     else:
         db_value = raw
 
