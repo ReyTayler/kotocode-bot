@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import traceback
 
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram import Update
+from telegram.error import NetworkError, TimedOut, RetryAfter
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 from bot.config import BOT_TOKEN, SUPERADMIN_ID, setup_logging
 from bot import database as db
@@ -25,6 +28,35 @@ from bot.utils.commands import set_commands_for_all_users
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Глобальный обработчик ошибок."""
+    error = context.error
+
+    # Сетевые ошибки — временные, бот сам восстановится, просто логируем коротко
+    if isinstance(error, (NetworkError, TimedOut)):
+        logger.warning("Сетевая ошибка (временная): %s", error)
+        return
+
+    # Flood limit — Telegram просит подождать
+    if isinstance(error, RetryAfter):
+        logger.warning("Flood limit: ждём %s секунд", error.retry_after)
+        return
+
+    # Всё остальное — логируем полный трейсбек
+    logger.error("Необработанная ошибка: %s", error)
+    logger.error(traceback.format_exc())
+
+    # Уведомляем супер-админа о критической ошибке
+    try:
+        await context.bot.send_message(
+            chat_id=SUPERADMIN_ID,
+            text=f"⚠️ <b>Ошибка бота</b>\n<code>{type(error).__name__}: {error}</code>",
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass  # если не смогли уведомить — не падаем
 
 
 def build_app():
@@ -67,6 +99,9 @@ def build_app():
 
     # ── Неизвестные команды — ВСЕГДА ПОСЛЕДНИМ ────────────────────────────────
     app.add_handler(MessageHandler(filters.COMMAND & private, unknown_command))
+
+    # ── Глобальный обработчик ошибок ───────────────────────────────────────────
+    app.add_error_handler(error_handler)
 
     return app
 
