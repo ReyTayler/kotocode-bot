@@ -29,10 +29,16 @@ LOG_FILE: str = os.path.join(os.path.dirname(__file__), "..", "logs", "bot.log")
 
 
 def setup_logging() -> None:
+    from logging.handlers import RotatingFileHandler
     level = getattr(logging, LOG_LEVEL, logging.INFO)
     fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     handlers = [
         logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        RotatingFileHandler(
+            LOG_FILE,
+            maxBytes=5 * 1024 * 1024,  # 5 МБ
+            backupCount=3,              # хранить 3 архивных файла
+            encoding="utf-8",
+        ),
     ]
     logging.basicConfig(level=level, format=fmt, handlers=handlers)
