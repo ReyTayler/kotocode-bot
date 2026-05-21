@@ -91,7 +91,7 @@ def fmt_event_cancelled(event: sqlite3.Row) -> str:
     )
 
 
-def fmt_event_list_item(event: sqlite3.Row, index: int, actions: bool = True) -> str:
+def fmt_event_list_item(event: sqlite3.Row, index: int, show_actions: bool = True) -> str:
     """Одна строка в списке событий."""
     emoji, label = TYPE_LABELS.get(event["type"], ("📋", event["type"]))
     comment = f"\n   💬 {event['comment']}" if event["comment"] else ""
