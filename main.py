@@ -18,7 +18,7 @@ from bot.handlers.events_list import list_events, my_events, cancel_event, cance
 from bot.handlers.admin import (
     add_manager, remove_manager, list_managers,
     add_teacher, remove_teacher, list_teachers,
-    list_all_users,
+    list_all_users, export_finish_events,
 )
 from bot.handlers.superadmin import (
     add_admin, remove_admin, list_admins,
@@ -91,6 +91,7 @@ def build_app():
     app.add_handler(CommandHandler("removeteacher", remove_teacher, filters=private))
     app.add_handler(CommandHandler("teachers",      list_teachers,  filters=private))
     app.add_handler(CommandHandler("users",         list_all_users, filters=private))
+    app.add_handler(CommandHandler("export_finish_events", export_finish_events, filters=private))
 
     # ── Супер-админ ────────────────────────────────────────────────────────────
     app.add_handler(CommandHandler("addadmin",    add_admin,    filters=private))
