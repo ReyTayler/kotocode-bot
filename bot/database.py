@@ -369,6 +369,27 @@ def mark_done_past_events() -> None:
             (threshold,),
         )
 
+# ─── Экспорт и удаление неактивных мероприятий ──────────────────────────────────────────────────────────────────
+
+def get_finished_events() -> list:
+    """Возвращает все события со статусом done или cancelled."""
+    with get_conn() as conn:
+        return conn.execute(
+            """SELECT type, teacher_username, group_name, lesson_number,
+                      scheduled_at, children, comment, status
+               FROM events
+               WHERE status IN ('done', 'cancelled')
+               ORDER BY scheduled_at"""
+        ).fetchall()
+
+
+def delete_finished_events() -> int:
+    """Удаляет все события со статусом done или cancelled. Возвращает количество удалённых."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM events WHERE status IN ('done', 'cancelled')"
+        )
+        return cur.rowcount
 
 # ─── Хелперы ──────────────────────────────────────────────────────────────────
 
