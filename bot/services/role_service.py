@@ -89,6 +89,7 @@ _COMMANDS_ADMIN = [
     BotCommand("removeteacher", "Снять преподавателя"),
     BotCommand("users",         "Все пользователи бота по ролям"),
     BotCommand("admins",        "Список администраторов"),
+    BotCommand("export_finish_events", "Экспорт завершённых/отменённых событий в CSV"),
 ]
 
 _COMMANDS_SUPERADMIN = [
@@ -129,6 +130,7 @@ _HELP_ADMIN = """
 /removeteacher @username — снять преподавателя
 /users — все пользователи бота по ролям
 /admins — список администраторов
+/export_finish_events — экспорт завершённых событий в CSV
 """
 
 _HELP_SUPERADMIN = """
