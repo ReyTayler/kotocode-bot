@@ -94,6 +94,7 @@ Telegram-бот для онлайн-школы **Котокод**. Решает 
 | `/removeteacher @username` | Снять преподавателя |
 | `/users` | Все пользователи бота по ролям |
 | `/admins` | Список администраторов |
+| `/export_finish_events` | Экспорт отменённых/выполненных событий с последующим их удалением из БД |
 
 ### Супер-админ
 | Команда | Описание |
@@ -168,7 +169,7 @@ kotocode-bot/
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/твой_username/kotocode-bot.git
+git clone https://github.com/ReyTayler/kotocode-bot.git
 cd kotocode-bot
 ```
 
