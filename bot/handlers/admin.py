@@ -1,4 +1,8 @@
 import logging
+import csv
+import io
+from datetime import datetime
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -144,3 +148,50 @@ async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 lines.append(f"{u['full_name']}{username}")
 
     await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+
+@require_role(is_admin_or_above)
+async def export_finish_events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    events = db.get_finished_events()
+
+    if not events:
+        await update.message.reply_text("Нет завершённых или отменённых событий для экспорта.")
+        return
+
+    # Формируем CSV в памяти
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+
+    # Заголовок
+    writer.writerow([
+        "Тип", "Преподаватель", "Группа", "Урок",
+        "Дата проведения", "Дети", "Комментарий", "Статус"
+    ])
+
+    type_labels = {"doproved": "Допровед", "perenos": "Перенос"}
+    status_labels = {"done": "Выполнен", "cancelled": "Отменён"}
+
+    for event in events:
+        writer.writerow([
+            type_labels.get(event["type"], event["type"]),
+            f"@{event['teacher_username']}",
+            event["group_name"],
+            event["lesson_number"],
+            event["scheduled_at"],
+            event["children"],
+            event["comment"] or "",
+            status_labels.get(event["status"], event["status"]),
+        ])
+
+    # Отправляем файл
+    output.seek(0)
+    filename = f"events_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    await update.message.reply_document(
+        document=output.getvalue().encode("utf-8-sig"),  # utf-8-sig для корректного открытия в Excel
+        filename=filename,
+        caption=f"📊 Экспорт завершённых событий — {len(events)} записей",
+    )
+
+    # Удаляем экспортированные события
+    deleted = db.delete_finished_events()
+    await update.message.reply_text(f"🗑 Удалено событий из базы: {deleted}")
