@@ -9,6 +9,7 @@ logs/
 
 # Виртуальное окружение
 venv/
+.venv/
 
 # Python кэш
 __pycache__/
