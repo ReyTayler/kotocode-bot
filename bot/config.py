@@ -1,6 +1,16 @@
-import os
+"""
+Настройки бота из окружения и логирование.
+
+Ролей и собственного хранилища у бота больше нет — кому слать уведомления,
+решает журнал. Здесь остаётся только то, что нужно самому боту: токен,
+таймзона (для отображения времени) и уровень логирования.
+"""
+from __future__ import annotations
+
 import logging
-import pytz
+import os
+from logging.handlers import RotatingFileHandler
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,36 +19,30 @@ load_dotenv()
 def _require(key: str) -> str:
     value = os.getenv(key)
     if not value:
-        raise ValueError(f"Обязательная переменная окружения не задана: {key}")
+        raise ValueError(f'Обязательная переменная окружения не задана: {key}')
     return value
 
 
-BOT_TOKEN: str = _require("BOT_TOKEN")
-GENERAL_CHAT_ID: int = int(_require("GENERAL_CHAT_ID"))
-SUPERADMIN_ID: int = int(_require("SUPERADMIN_ID"))
+BOT_TOKEN: str = _require('BOT_TOKEN')
 
-TIMEZONE_STR: str = os.getenv("TIMEZONE", "Europe/Moscow")
-TIMEZONE = pytz.timezone(TIMEZONE_STR)
+TIMEZONE: str = os.getenv('TIMEZONE', 'Europe/Moscow')
 
-LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO').upper()
 
-DB_PATH: str = os.path.join(os.path.dirname(__file__), "..", "data", "kotocode.db")
-DB_URL: str = f"sqlite:///{DB_PATH}"
-
-LOG_FILE: str = os.path.join(os.path.dirname(__file__), "..", "logs", "bot.log")
+LOG_FILE: str = os.path.join(os.path.dirname(__file__), '..', 'logs', 'bot.log')
 
 
 def setup_logging() -> None:
-    from logging.handlers import RotatingFileHandler
+    """Настраивает логирование в консоль и в файл с ротацией."""
     level = getattr(logging, LOG_LEVEL, logging.INFO)
-    fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    fmt = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
     handlers = [
         logging.StreamHandler(),
         RotatingFileHandler(
             LOG_FILE,
             maxBytes=5 * 1024 * 1024,  # 5 МБ
             backupCount=3,              # хранить 3 архивных файла
-            encoding="utf-8",
+            encoding='utf-8',
         ),
     ]
     logging.basicConfig(level=level, format=fmt, handlers=handlers)
