@@ -44,7 +44,15 @@ def identify(*, telegram_id: int, username: str | None, full_name: str) -> bool:
     except httpx.HTTPError as exc:
         logger.warning('identify не дошёл до журнала: %s', exc)
         return False
-    return response.status_code == 204
+    if response.status_code != 204:
+        # Журнал ответил отказом. Молчать здесь нельзя: снаружи это выглядит как
+        # «бот работает, но аккаунт не появляется в списке привязки», и причину
+        # искать негде. 400 — обычно Host не совпал с ALLOWED_HOSTS,
+        # 403 — разошёлся BOT_SERVICE_TOKEN между двумя .env.
+        logger.warning('identify отклонён журналом: HTTP %s, тело: %.200s',
+                       response.status_code, response.text)
+        return False
+    return True
 
 
 def my_events(*, telegram_id: int) -> dict | None:
@@ -58,6 +66,10 @@ def my_events(*, telegram_id: int) -> dict | None:
     except httpx.HTTPError as exc:
         logger.warning('my не дошёл до журнала: %s', exc)
         return None
+    if response.status_code == 404:
+        return None            # штатный случай: аккаунт ещё не привязан
     if response.status_code != 200:
+        logger.warning('my отклонён журналом: HTTP %s, тело: %.200s',
+                       response.status_code, response.text)
         return None
     return response.json()

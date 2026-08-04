@@ -11,6 +11,10 @@ class _Resp:
         self.status_code = status_code
         self._payload = payload or {}
 
+    @property
+    def text(self):
+        return str(self._payload)
+
     def json(self):
         return self._payload
 
@@ -38,3 +42,15 @@ def test_my_returns_payload():
     payload = {'teacher_name': 'Анна', 'events': [{'date': '2026-08-05'}]}
     with patch('bot.journal_api.httpx.get', return_value=_Resp(200, payload)):
         assert journal_api.my_events(telegram_id=1) == payload
+
+
+def test_identify_logs_rejection(caplog):
+    """Отказ журнала обязан попадать в лог.
+
+    Иначе снаружи это выглядит как «бот отвечает, но аккаунт не появляется
+    в списке привязки», и причину искать негде.
+    """
+    with patch('bot.journal_api.httpx.post', return_value=_Resp(400)):
+        assert journal_api.identify(telegram_id=1, username=None, full_name='И') is False
+    assert 'отклонён журналом' in caplog.text
+    assert '400' in caplog.text
