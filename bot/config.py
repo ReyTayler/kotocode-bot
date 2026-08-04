@@ -46,3 +46,9 @@ def setup_logging() -> None:
         ),
     ]
     logging.basicConfig(level=level, format=fmt, handlers=handlers)
+
+    # httpx на уровне INFO печатает полный URL каждого запроса, а токен бота —
+    # часть URL обращений к api.telegram.org. То есть при LOG_LEVEL=INFO секрет
+    # утекает в journalctl и в logs/bot.log целиком. Глушим до WARNING: ошибки
+    # запросов по-прежнему видны, а рутинные обращения — нет.
+    logging.getLogger('httpx').setLevel(logging.WARNING)
