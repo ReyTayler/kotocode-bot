@@ -25,6 +25,9 @@ def _require(key: str) -> str:
 
 BOT_TOKEN: str = _require('BOT_TOKEN')
 
+# Адрес Bot API без / в конце. Пусто → api.telegram.org.
+TELEGRAM_API_BASE: str = os.getenv('TELEGRAM_API_BASE', '').rstrip('/')
+
 TIMEZONE: str = os.getenv('TIMEZONE', 'Europe/Moscow')
 
 LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO').upper()
@@ -34,6 +37,8 @@ LOG_FILE: str = os.path.join(os.path.dirname(__file__), '..', 'logs', 'bot.log')
 
 def setup_logging() -> None:
     """Настраивает логирование в консоль и в файл с ротацией."""
+    # logs/ не в git: на чистом сервере папки нет, и RotatingFileHandler упадёт.
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     level = getattr(logging, LOG_LEVEL, logging.INFO)
     fmt = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
     handlers = [
